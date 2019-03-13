@@ -24,7 +24,7 @@
         >
           <div class="iti-flag" v-if="enabledFlags" :class="pb.iso2.toLowerCase()"></div>
           <strong>{{ pb.name }}</strong>
-          <span>+{{ pb.dialCode }}</span>
+          <span v-if="dropdownOptions && !dropdownOptions.disabledDialCode">+{{ pb.dialCode }}</span>
         </li>
       </ul>
     </div>
@@ -36,19 +36,18 @@
       :state="state"
       :formatter="format"
       :disabled="disabled"
+      :required="required"
+      :autocomplete="autocomplete"
+      :name="name"
+      :class="inputClasses"
       @blur="onBlur"
       @input="onInput"
-      :required="required"
     >
   </div>
 </template>
 
 <style src="./assets/sprite.css"></style>
 <style scoped>
-:local {
-  --border-radius: 2px;
-}
-
 li.last-preferred {
   border-bottom: 1px solid #cacaca;
 }
@@ -78,7 +77,7 @@ li.last-preferred {
 }
 input {
   border: none;
-  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+  border-radius: 0 2px 2px 0;
   width: 100%;
   outline: none;
   padding-left: 7px;
@@ -159,6 +158,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    disabledFormatting: {
+      type: Boolean,
+      default: false,
+    },
     invalidMsg: {
       default: '',
       type: String,
@@ -188,6 +191,22 @@ export default {
     ignoredCountries: {
       type: Array,
       default: () => [],
+    },
+    autocomplete: {
+      type: String,
+      default: 'on',
+    },
+    name: {
+      type: String,
+      default: 'telephone',
+    },
+    inputClasses: {
+      type: String,
+      default: '',
+    },
+    dropdownOptions: {
+      type: Object,
+      default: () => ({}),
     },
   },
   mounted() {
@@ -261,6 +280,9 @@ export default {
         // Ex: 0432421999
         phone = this.phone.slice(1);
       }
+      if (this.disabledFormatting) {
+        return this.phone;
+      }
 
       return formatNumber(phone, this.activeCountry && this.activeCountry.iso2, 'International');
     },
@@ -270,12 +292,18 @@ export default {
     response() {
       // If it is a valid number, returns the formatted value
       // Otherwise returns what it is
-      const number = this.state ? this.formattedResult : this.phone;
-      return {
-        number,
+      const response = {
+        number: this.state ? this.formattedResult : this.phone,
         isValid: this.state,
         country: this.activeCountry,
-      };
+      }
+      // If formatting to the input is disabled, try to return the formatted value to its parent
+      if (this.disabledFormatting) {
+        Object.assign(response, {
+          formattedNumber: formatNumber(this.phone, this.activeCountry && this.activeCountry.iso2, 'International')
+        })
+      }
+      return response;
     },
   },
   watch: {
